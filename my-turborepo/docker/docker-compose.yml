@@ -1,0 +1,28 @@
+services:
+  postgres:
+    image: postgres:15
+    container_name: postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: keycloak
+    ports:
+      - "5433:5432"
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:24.0.3
+    command: start-dev
+    environment:
+      KC_DB: postgres
+      KC_DB_URL_HOST: postgres   
+      KC_DB_USERNAME: postgres
+      KC_DB_PASSWORD: postgres
+      KC_DB_DATABASE: keycloak
+
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+
+    ports:
+      - "8080:8080"
+    depends_on:
+      - postgres
