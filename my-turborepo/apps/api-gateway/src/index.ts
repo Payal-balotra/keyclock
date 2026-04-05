@@ -5,12 +5,24 @@ import { userClient } from "./grpc/userClient";
 
 const app = express();
 
+app.use((req, res, next) => {
+  res.header("Access-Control-Allow-Origin", "*");
+  res.header("Access-Control-Allow-Headers", "Authorization, Content-Type");
+  res.header("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+
+  if (req.method === "OPTIONS") {
+    return res.sendStatus(204);
+  }
+
+  next();
+});
+
 app.use(express.json());
 
 app.post("/todo", authMiddleware, (req: any, res) => {
   const { title } = req.body;
 
-  // 1️⃣ Sync user first
+ 
   userClient.SyncUser(
     {
       id: req.user.id,
@@ -19,11 +31,10 @@ app.post("/todo", authMiddleware, (req: any, res) => {
     (err: any, user: any) => {
       if (err) return res.status(500).send(err);
 
-      // 2️⃣ Then create todo
       todoClient.CreateTodo(
         {
           title,
-          userId: user.id, // ✅ use returned user
+          userId: user.id, 
         },
         (err: any, response: any) => {
           if (err) return res.status(500).send(err);
@@ -35,7 +46,6 @@ app.post("/todo", authMiddleware, (req: any, res) => {
   );
 });
 
-// ✅ separate route (correctly closed)
 app.get("/todos", authMiddleware, (req: any, res) => {
   todoClient.GetTodos(
     { userId: req.user.id },
