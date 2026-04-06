@@ -1,5 +1,5 @@
 import path from "path";
-import * as grpc from "@grpc/grpc-js";          // ✅ FIXED
+import * as grpc from "@grpc/grpc-js";         
 import * as protoLoader from "@grpc/proto-loader";
 
 const PROTO_PATH = path.resolve(
@@ -17,7 +17,7 @@ const packageDef = protoLoader.loadSync(PROTO_PATH, {
 
 const grpcObj = grpc.loadPackageDefinition(packageDef) as any;
 
-const todoClient = new grpcObj.todo.TodoService(
+export const todoClient = new grpcObj.todo.TodoService(
   "localhost:50051",
   grpc.credentials.createInsecure()
 );

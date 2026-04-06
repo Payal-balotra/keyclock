@@ -1,28 +1,36 @@
+version: "3.8"
+
 services:
   postgres:
     image: postgres:15
-    container_name: postgres
+    container_name: main-postgres
+    restart: always
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: keycloak
+      POSTGRES_DB: keycloak_db  # default DB for Keycloak
     ports:
       - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/init.sql:/docker-entrypoint-initdb.d/init.sql  # auto-create both DBs
 
   keycloak:
-    image: quay.io/keycloak/keycloak:24.0.3
+    image: quay.io/keycloak/keycloak:24.0
+    container_name: keycloak
     command: start-dev
     environment:
       KC_DB: postgres
-      KC_DB_URL_HOST: postgres   
+      KC_DB_URL_HOST: postgres
+      KC_DB_URL_DATABASE: keycloak_db
       KC_DB_USERNAME: postgres
       KC_DB_PASSWORD: postgres
-      KC_DB_DATABASE: keycloak
-
       KEYCLOAK_ADMIN: admin
       KEYCLOAK_ADMIN_PASSWORD: admin
-
     ports:
       - "8080:8080"
     depends_on:
       - postgres
+
+volumes:
+  postgres_data:

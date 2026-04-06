@@ -1,8 +1,7 @@
-import grpc from "@grpc/grpc-js";
-import protoLoader from "@grpc/proto-loader";
-import { PrismaClient } from "@repo/db";
+import * as grpc from "@grpc/grpc-js";
+import * as protoLoader from "@grpc/proto-loader";
+import { prisma } from "@repo/db";
 
-const prisma = new PrismaClient();
 
 const packageDef = protoLoader.loadSync(
   "../../packages/grpc/todo.proto"

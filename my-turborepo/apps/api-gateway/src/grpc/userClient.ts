@@ -1,9 +1,19 @@
-import grpc from "@grpc/grpc-js";
-import protoLoader from "@grpc/proto-loader";
+import * as grpc from "@grpc/grpc-js";
+import * as protoLoader from "@grpc/proto-loader";
+import path from "path";
 
-const packageDef = protoLoader.loadSync(
-  "../../../packages/grpc/user.proto"
+const PROTO_PATH = path.resolve(
+  __dirname,
+  "../../../../packages/grpc/user.proto"
 );
+
+const packageDef = protoLoader.loadSync(PROTO_PATH, {
+  keepCase: true,
+  longs: String,
+  enums: String,
+  defaults: true,
+  oneofs: true,
+});
 
 const grpcObj = grpc.loadPackageDefinition(packageDef) as any;
 

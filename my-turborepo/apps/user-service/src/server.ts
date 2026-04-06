@@ -1,8 +1,6 @@
-import grpc from "@grpc/grpc-js";
-import protoLoader from "@grpc/proto-loader";
-import { PrismaClient } from "@repo/db";
-
-const prisma = new PrismaClient();
+import * as grpc from "@grpc/grpc-js";
+import * as protoLoader from "@grpc/proto-loader";
+import { prisma } from "@repo/db";
 
 const packageDef = protoLoader.loadSync(
   "../../packages/grpc/user.proto"
@@ -15,16 +13,20 @@ const server = new grpc.Server();
 
 server.addService(userPackage.UserService.service, {
   SyncUser: async (call, callback) => {
-    const { id, email } = call.request;
+    try {
+      const { id, email } = call.request;
 
-    const user = await prisma.user.upsert({
-      where: { id },
-      update: {},
-      create: { id, email }
-    });
+      const user = await prisma.user.upsert({
+        where: { id },
+        update: {},
+        create: { id, email },
+      });
 
-    callback(null, user);
-  }
+      callback(null, user);
+    } catch (err) {
+      callback(err as any, null);
+    }
+  },
 });
 
 server.bindAsync(

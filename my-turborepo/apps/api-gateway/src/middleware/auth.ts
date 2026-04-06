@@ -1,61 +1,50 @@
 import jwt from "jsonwebtoken";
-import type { NextFunction, Request, Response } from "express";
+import jwksClient from "jwks-rsa";
+import type { Request, Response, NextFunction } from "express";
 
-const KEYCLOAK_URL = process.env.KEYCLOAK_URL ?? "http://localhost:8080";
-const KEYCLOAK_REALM = process.env.KEYCLOAK_REALM ?? "myRealm";
-const KEYCLOAK_ISSUER = `${KEYCLOAK_URL}/realms/${KEYCLOAK_REALM}`;
+const KEYCLOAK_URL = "http://localhost:8080";
+const REALM = "myRealm";
 
-let cachedPublicKey: string | null = null;
+const client = jwksClient({
+  jwksUri: `${KEYCLOAK_URL}/realms/${REALM}/protocol/openid-connect/certs`,
+});
 
-function toPem(publicKey: string) {
-  const formatted = publicKey.match(/.{1,64}/g)?.join("\n") ?? publicKey;
-  return `-----BEGIN PUBLIC KEY-----\n${formatted}\n-----END PUBLIC KEY-----`;
+function getKey(header: any, callback: any) {
+  client.getSigningKey(header.kid, function (err, key) {
+    const signingKey = key?.getPublicKey();
+    callback(null, signingKey);
+  });
 }
 
-async function getRealmPublicKey() {
-  if (cachedPublicKey) return cachedPublicKey;
-
-  const response = await fetch(KEYCLOAK_ISSUER);
-  if (!response.ok) {
-    throw new Error(`Unable to fetch realm config: ${response.status}`);
-  }
-
-  const realm = await response.json();
-  if (!realm.public_key) {
-    throw new Error("Keycloak realm public key not found");
-  }
-
-  cachedPublicKey = toPem(realm.public_key);
-  return cachedPublicKey;
-}
-
-export const authMiddleware = async (
-  req: Request & { user?: { id: string; email?: string } },
+export const authMiddleware = (
+  req: Request & { user?: any },
   res: Response,
   next: NextFunction
 ) => {
-  try {
-    const authHeader = req.headers.authorization;
-    const token = authHeader?.startsWith("Bearer ")
-      ? authHeader.split(" ")[1]
-      : undefined;
+  const authHeader = req.headers.authorization;
+  const token = authHeader?.split(" ")[1];
 
-    if (!token) return res.status(401).send("No token");
+  if (!token) return res.status(401).send("No token");
 
-    const publicKey = await getRealmPublicKey();
-    const decoded = jwt.verify(token, publicKey, {
+  jwt.verify(
+    token,
+    getKey,
+    {
+      issuer: `${KEYCLOAK_URL}/realms/${REALM}`,
       algorithms: ["RS256"],
-      issuer: KEYCLOAK_ISSUER,
-    }) as jwt.JwtPayload;
+    },
+    (err, decoded: any) => {
+      if (err) {
+        console.error(err);
+        return res.status(401).send("Invalid token");
+      }
 
-    req.user = {
-      id: decoded.sub as string,
-      email: decoded.email as string | undefined,
-    };
+      req.user = {
+        id: decoded.sub,
+        email: decoded.email,
+      };
 
-    next();
-  } catch (error) {
-    console.error("Token verification failed", error);
-    return res.status(401).send("Invalid token");
-  }
+      next();
+    }
+  );
 };
