@@ -11,6 +11,7 @@ const client = jwksClient({
 
 function getKey(header: any, callback: any) {
   client.getSigningKey(header.kid, function (err, key) {
+    if (err) return callback(err);
     const signingKey = key?.getPublicKey();
     callback(null, signingKey);
   });
@@ -25,7 +26,6 @@ export const authMiddleware = (
   const token = authHeader?.split(" ")[1];
 
   if (!token) return res.status(401).send("No token");
-
   jwt.verify(
     token,
     getKey,

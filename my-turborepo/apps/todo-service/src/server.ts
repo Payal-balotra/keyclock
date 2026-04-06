@@ -31,7 +31,52 @@ server.addService(todoPackage.TodoService.service, {
     });
 
     callback(null, { todos });
+  },
+
+  UpdateTodo: async (call, callback) => {
+    const { id, title } = call.request;
+
+    try {
+      const updatedTodo = await prisma.todo.update({
+        where: { id },
+        data: { title }
+      });
+
+      callback(null, updatedTodo);
+    } catch (err) {
+      callback(err as any, null);
+    }
+  },
+  DeleteTodo: async (call, callback) => {
+    const { id } = call.request;
+
+    try {
+      const deletedTodo = await prisma.todo.delete({
+        where: { id },
+      });
+
+      callback(null, deletedTodo);
+    } catch (err) {
+      callback(err as any, null);
+    }
+  },
+  ToggleTodo: async (call, callback) => {
+    const { id } = call.request;
+
+    try {
+      const todo = await prisma.todo.findUnique({ where: { id } });
+      if (!todo) throw new Error("Todo not found");
+      const toogleTodo = await prisma.todo.update({
+        where: { id },
+        data: { completed: !todo.completed }
+      });
+
+      callback(null, toogleTodo);
+    } catch (err) {
+      callback(err as any, null);
+    }
   }
+
 });
 
 server.bindAsync(

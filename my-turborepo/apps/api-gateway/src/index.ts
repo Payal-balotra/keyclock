@@ -2,25 +2,17 @@ import express from "express";
 import { authMiddleware } from "./middleware/auth";
 import { todoClient } from "./grpc/todoClient";
 import { userClient } from "./grpc/userClient";
-
+import cors from "cors"
 const app = express();
 
-/* -------------------- CORS -------------------- */
-app.use((req, res, next) => {
-  res.header("Access-Control-Allow-Origin", "http://localhost:5173"); // ✅ safer than *
-  res.header("Access-Control-Allow-Headers", "Authorization, Content-Type");
-  res.header("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-
-  if (req.method === "OPTIONS") {
-    return res.sendStatus(204);
-  }
-
-  next();
-});
+app.use(cors({
+  origin: "http://localhost:5173",
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+}));
 
 app.use(express.json());
 
-/* -------------------- Helpers (promisify gRPC) -------------------- */
 const syncUser = (data: any) =>
   new Promise((resolve, reject) => {
     userClient.SyncUser(data, (err: any, res: any) => {
@@ -45,9 +37,33 @@ const getTodosGrpc = (data: any) =>
     });
   });
 
-/* -------------------- Routes -------------------- */
+const updateTodoGrpc = (data: any) =>{
 
-// ✅ Create Todo
+ return  new Promise((resolve, reject) => {
+  todoClient.UpdateTodo(data, (err: any, res: any) => {
+    if (err) return reject(err);
+    resolve(res);
+  });
+});
+}
+
+
+const deleteTodoGrpc = (data :any) =>{
+  return new Promise((resolve,reject)=>{
+    todoClient.DeleteTodo(data,(err : any , res :any)=>{
+      if(err) return reject(err);
+      resolve(res)
+    })
+  })
+}
+const toggleTodoGrpc = (data :any) =>{
+ return  new Promise((resolve,reject)=>{
+    todoClient.ToggleTodo(data,(err : any , res :any)=>{
+      if(err) return reject(err);
+      resolve(res)
+    })
+  })
+}
 app.post("/todo", authMiddleware, async (req: any, res) => {
   try {
     const { title } = req.body;
@@ -56,9 +72,8 @@ app.post("/todo", authMiddleware, async (req: any, res) => {
       return res.status(400).json({ error: "Title is required" });
     }
 
-    // 🔥 IMPORTANT: id must come from Keycloak "sub"
     const user = await syncUser({
-      id: req.user.id, // should be mapped from decoded.sub in middleware
+      id: req.user.id, 
       email: req.user.email,
     });
 
@@ -74,7 +89,6 @@ app.post("/todo", authMiddleware, async (req: any, res) => {
   }
 });
 
-
 app.get("/todos", authMiddleware, async (req: any, res) => {
   try {
     const response: any = await getTodosGrpc({
@@ -88,7 +102,59 @@ app.get("/todos", authMiddleware, async (req: any, res) => {
   }
 });
 
-/* -------------------- Server -------------------- */
+app.put("/todo/:id", authMiddleware, async (req: any, res) => {
+  try {
+    const { id } = req.params;
+    const { title } = req.body;
+
+    if (!title || !title.trim()) {
+      return res.status(400).json({ error: "Title is required" });
+    }
+
+    const updatedTodo: any = await updateTodoGrpc({
+      id,
+      title: title.trim(),
+    });
+
+    res.json(updatedTodo);
+  } catch (err) {
+    console.error("Update Todo Error:", err);
+    res.status(500).json({ error: "Failed to update todo" });
+  }
+});
+app.delete("/todo/:id", authMiddleware, async (req: any, res) => {
+  try {
+    const { id } = req.params;
+    
+    const deleteTodo: any = await deleteTodoGrpc({
+      id
+      
+    });
+
+    res.json(deleteTodo);
+  } catch (err) {
+    console.error("Update Todo Error:", err);
+    res.status(500).json({ error: "Failed to update todo" });
+  }
+  
+});
+app.put("/todo/toggle/:id", authMiddleware, async (req: any, res) => {
+  try {
+    console.log("toggle request arrived at backend ")
+    const { id } = req.params;
+    console.log("Toggling todo id:", id);
+    const toggleTodo: any = await toggleTodoGrpc({
+      id
+    });
+
+    res.json(toggleTodo);
+  } catch (err) {
+    console.error("Update Todo Error:", err);
+    res.status(500).json({ error: "Failed to update todo" });
+  }
+  
+});
+
 app.listen(3000, () => {
   console.log("API Gateway running on 3000");
 });

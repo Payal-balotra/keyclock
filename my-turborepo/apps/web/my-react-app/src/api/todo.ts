@@ -41,3 +41,21 @@ export async function createTodo(title: string): Promise<Todo> {
     body: JSON.stringify({ title }),
   });
 }
+export async function updateTodo(id: string, title: string): Promise<Todo> {
+  return request(`/todo/${id}`, {
+    method: "PUT",
+    body: JSON.stringify({ title }),
+  });
+}
+
+export async function deleteTodo(id: string): Promise<Todo> {
+  return request(`/todo/${id}`, {
+    method: "DELETE",
+  });
+}
+export async function completedTodo(id: string): Promise<Todo> {
+  console.log("request arrives at frontend ")
+  return request(`/todo/toggle/${id}`, {
+    method: "PUT",
+  });
+}
